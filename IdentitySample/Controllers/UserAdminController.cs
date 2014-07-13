@@ -63,15 +63,15 @@ namespace IdentitySample.Controllers
         // GET: /Users/Details/5
         public async Task<ActionResult> Details(int id)
         {
-            if (id == null)
+            if (id > 0)
             {
-                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+                // Process normally:
+                var user = await UserManager.FindByIdAsync(id);
+                ViewBag.RoleNames = await UserManager.GetRolesAsync(user.Id);
+                return View(user);
             }
-            var user = await UserManager.FindByIdAsync(id);
-
-            ViewBag.RoleNames = await UserManager.GetRolesAsync(user.Id);
-
-            return View(user);
+            // Return Error:
+            return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
         }
 
         //
@@ -124,29 +124,28 @@ namespace IdentitySample.Controllers
         // GET: /Users/Edit/1
         public async Task<ActionResult> Edit(int id)
         {
-            if (id == null)
+            if (id > 0)
             {
-                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
-            }
-            var user = await UserManager.FindByIdAsync(id);
-            if (user == null)
-            {
-                return HttpNotFound();
-            }
-
-            var userRoles = await UserManager.GetRolesAsync(user.Id);
-
-            return View(new EditUserViewModel()
-            {
-                Id = user.Id,
-                Email = user.Email,
-                RolesList = RoleManager.Roles.ToList().Select(x => new SelectListItem()
+                var user = await UserManager.FindByIdAsync(id);
+                if (user == null)
                 {
-                    Selected = userRoles.Contains(x.Name),
-                    Text = x.Name,
-                    Value = x.Name
-                })
-            });
+                    return HttpNotFound();
+                }
+
+                var userRoles = await UserManager.GetRolesAsync(user.Id);
+                return View(new EditUserViewModel()
+                {
+                    Id = user.Id,
+                    Email = user.Email,
+                    RolesList = RoleManager.Roles.ToList().Select(x => new SelectListItem()
+                    {
+                        Selected = userRoles.Contains(x.Name),
+                        Text = x.Name,
+                        Value = x.Name
+                    })
+                });
+            }
+            return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
         }
 
         //
@@ -194,16 +193,16 @@ namespace IdentitySample.Controllers
         // GET: /Users/Delete/5
         public async Task<ActionResult> Delete(int id)
         {
-            if (id == null)
+            if (id > 0)
             {
-                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+                var user = await UserManager.FindByIdAsync(id);
+                if (user == null)
+                {
+                    return HttpNotFound();
+                }
+                return View(user);
             }
-            var user = await UserManager.FindByIdAsync(id);
-            if (user == null)
-            {
-                return HttpNotFound();
-            }
-            return View(user);
+            return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
         }
 
         //
@@ -214,23 +213,25 @@ namespace IdentitySample.Controllers
         {
             if (ModelState.IsValid)
             {
-                if (id == null)
+                if (id > 0)
+                {
+                    var user = await UserManager.FindByIdAsync(id);
+                    if (user == null)
+                    {
+                        return HttpNotFound();
+                    }
+                    var result = await UserManager.DeleteAsync(user);
+                    if (!result.Succeeded)
+                    {
+                        ModelState.AddModelError("", result.Errors.First());
+                        return View();
+                    }
+                    return RedirectToAction("Index");
+                }
+                else
                 {
                     return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
                 }
-
-                var user = await UserManager.FindByIdAsync(id);
-                if (user == null)
-                {
-                    return HttpNotFound();
-                }
-                var result = await UserManager.DeleteAsync(user);
-                if (!result.Succeeded)
-                {
-                    ModelState.AddModelError("", result.Errors.First());
-                    return View();
-                }
-                return RedirectToAction("Index");
             }
             return View();
         }
