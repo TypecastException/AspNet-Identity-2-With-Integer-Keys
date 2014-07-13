@@ -15,23 +15,32 @@ namespace IdentitySample.Models
 {
     // Configure the application user manager used in this application. UserManager is defined in ASP.NET Identity and is used by the application.
 
-    public class ApplicationUserManager : UserManager<ApplicationUser>
+    // *** PASS IN TYPE ARGUMENT TO BASE CLASS:
+    public class ApplicationUserManager : UserManager<ApplicationUser, int>
     {
-        public ApplicationUserManager(IUserStore<ApplicationUser> store)
+        // *** ADD INT TYPE ARGUMENT TO CONSTRUCTOR CALL:
+        public ApplicationUserManager(IUserStore<ApplicationUser, int> store)
             : base(store)
         {
         }
 
-        public static ApplicationUserManager Create(IdentityFactoryOptions<ApplicationUserManager> options,
+        public static ApplicationUserManager Create(
+            IdentityFactoryOptions<ApplicationUserManager> options,
             IOwinContext context)
         {
-            var manager = new ApplicationUserManager(new UserStore<ApplicationUser>(context.Get<ApplicationDbContext>()));
+            // *** PASS CUSTOM APPLICATION USER STORE AS CONSTRUCTOR ARGUMENT:
+            var manager = new ApplicationUserManager(
+                new ApplicationUserStore(context.Get<ApplicationDbContext>()));
+
             // Configure validation logic for usernames
-            manager.UserValidator = new UserValidator<ApplicationUser>(manager)
+
+            // *** ADD INT TYPE ARGUMENT TO METHOD CALL:
+            manager.UserValidator = new UserValidator<ApplicationUser, int>(manager)
             {
                 AllowOnlyAlphanumericUserNames = false,
                 RequireUniqueEmail = true
             };
+
             // Configure validation logic for passwords
             manager.PasswordValidator = new PasswordValidator
             {
@@ -41,46 +50,64 @@ namespace IdentitySample.Models
                 RequireLowercase = true,
                 RequireUppercase = true,
             };
+
             // Configure user lockout defaults
             manager.UserLockoutEnabledByDefault = true;
             manager.DefaultAccountLockoutTimeSpan = TimeSpan.FromMinutes(5);
             manager.MaxFailedAccessAttemptsBeforeLockout = 5;
-            // Register two factor authentication providers. This application uses Phone and Emails as a step of receiving a code for verifying the user
-            // You can write your own provider and plug in here.
-            manager.RegisterTwoFactorProvider("PhoneCode", new PhoneNumberTokenProvider<ApplicationUser>
-            {
-                MessageFormat = "Your security code is: {0}"
-            });
-            manager.RegisterTwoFactorProvider("EmailCode", new EmailTokenProvider<ApplicationUser>
-            {
-                Subject = "SecurityCode",
-                BodyFormat = "Your security code is {0}"
-            });
+
+            // Register two factor authentication providers. 
+            // This application uses Phone and Emails as a step of receiving a 
+            // code for verifying the user You can write your own provider and plug in here.
+
+            // *** ADD INT TYPE ARGUMENT TO METHOD CALL:
+            manager.RegisterTwoFactorProvider("PhoneCode",
+                new PhoneNumberTokenProvider<ApplicationUser, int>
+                {
+                    MessageFormat = "Your security code is: {0}"
+                });
+
+            // *** ADD INT TYPE ARGUMENT TO METHOD CALL:
+            manager.RegisterTwoFactorProvider("EmailCode",
+                new EmailTokenProvider<ApplicationUser, int>
+                {
+                    Subject = "SecurityCode",
+                    BodyFormat = "Your security code is {0}"
+                });
+
             manager.EmailService = new EmailService();
             manager.SmsService = new SmsService();
             var dataProtectionProvider = options.DataProtectionProvider;
             if (dataProtectionProvider != null)
             {
+                // *** ADD INT TYPE ARGUMENT TO METHOD CALL:
                 manager.UserTokenProvider =
-                    new DataProtectorTokenProvider<ApplicationUser>(dataProtectionProvider.Create("ASP.NET Identity"));
+                    new DataProtectorTokenProvider<ApplicationUser, int>(
+                        dataProtectionProvider.Create("ASP.NET Identity"));
             }
             return manager;
         }
     }
 
-    // Configure the RoleManager used in the application. RoleManager is defined in the ASP.NET Identity core assembly
-    public class ApplicationRoleManager : RoleManager<IdentityRole>
+
+    // PASS CUSTOM APPLICATION ROLE AND INT AS TYPE ARGUMENTS TO BASE:
+    public class ApplicationRoleManager : RoleManager<ApplicationRole, int>
     {
-        public ApplicationRoleManager(IRoleStore<IdentityRole,string> roleStore)
+        // PASS CUSTOM APPLICATION ROLE AND INT AS TYPE ARGUMENTS TO CONSTRUCTOR:
+        public ApplicationRoleManager(IRoleStore<ApplicationRole, int> roleStore)
             : base(roleStore)
         {
         }
 
-        public static ApplicationRoleManager Create(IdentityFactoryOptions<ApplicationRoleManager> options, IOwinContext context)
+        // PASS CUSTOM APPLICATION ROLE AS TYPE ARGUMENT:
+        public static ApplicationRoleManager Create(
+            IdentityFactoryOptions<ApplicationRoleManager> options, IOwinContext context)
         {
-            return new ApplicationRoleManager(new RoleStore<IdentityRole>(context.Get<ApplicationDbContext>()));
+            return new ApplicationRoleManager(
+                new ApplicationRoleStore(context.Get<ApplicationDbContext>()));
         }
     }
+
 
     public class EmailService : IIdentityMessageService
     {
@@ -90,6 +117,7 @@ namespace IdentitySample.Models
             return Task.FromResult(0);
         }
     }
+
 
     public class SmsService : IIdentityMessageService
     {
@@ -121,7 +149,7 @@ namespace IdentitySample.Models
             //Create Role Admin if it does not exist
             var role = roleManager.FindByName(roleName);
             if (role == null) {
-                role = new IdentityRole(roleName);
+                role = new ApplicationRole(roleName);
                 var roleresult = roleManager.Create(role);
             }
 
@@ -140,7 +168,8 @@ namespace IdentitySample.Models
         }
     }
 
-    public class ApplicationSignInManager : SignInManager<ApplicationUser, string>
+
+    public class ApplicationSignInManager : SignInManager<ApplicationUser, int>
     {
         public ApplicationSignInManager(ApplicationUserManager userManager, IAuthenticationManager authenticationManager) : 
             base(userManager, authenticationManager) { }
